@@ -103,7 +103,7 @@ void sgemm4_ukernel(const float* A, const float* B, float* C) {
 #ifdef _OPENMP
 #pragma omp atomic
 #endif
-libxsmm_num_total_flops += 128;
+  //libxsmm_num_total_flops += 128;
 #endif
 }
 

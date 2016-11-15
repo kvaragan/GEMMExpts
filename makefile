@@ -24,7 +24,7 @@ LFLAGS = -L/home/vkprofile/blis/lib
 LIBS   = -l:libblis.a -lm
 
 #define the C source files
-SRCS   = test_gemm.c basicGEMM.c sgemm128_ukernel.c sgemm32_ukernel.c
+SRCS   = test_gemm.c basicGEMM.c sgemm128_ukernel.c sgemm32_ukernel.c sgemm4_ukernel.c
 
 # define the C object files 
 #

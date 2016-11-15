@@ -9,4 +9,6 @@ void sgemm32(obj_t a, obj_t b, obj_t c);
 
 void sgemm128(obj_t a, obj_t b, obj_t c);
 
+void sgemm4(obj_t a, obj_t b, obj_t c);
+
 #endif // end of __gemmEXPTS_H__

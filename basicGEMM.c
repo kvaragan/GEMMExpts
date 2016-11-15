@@ -1,4 +1,4 @@
-/* Kiran Varaganti - GEMM implementation for small matirces */
+/* Kiran Varaganti - GEMM implementation for small matrices */
 #include <unistd.h>
 #include "blis.h"
 #include "gemmExpts.h"
@@ -21,7 +21,7 @@ void sgemm_Ukernel_ref(
 void sgemm(obj_t a, obj_t b, obj_t c)
 {
   dim_t m  = bli_obj_length(c);
-  dim_t k  = bli_obj_width_after_trans(a);
+  dim_t k  = bli_obj_width(a);
   dim_t n  = bli_obj_width(c);
 
   dim_t lda = bli_obj_col_stride(a);
@@ -40,33 +40,21 @@ void sgemm(obj_t a, obj_t b, obj_t c)
 
   inc_t rsc = c.rs;
   inc_t csc = c.cs;
+
+  printf("(m, n, k) = (%u, %u, %u)\n", m, n, k);
+  printf ("a : (rs, cs, lda) = (%u, %u, %u)\n", rsa, csa, lda);
+  printf ("b : (rs, cs, lda) = (%u, %u, %u)\n", rsb, csb, ldb);
+  printf ("c : (rs, cs, lda) = (%u, %u, %u)\n", rsc, csc, ldc);
   
   sgemm_Ukernel_ref ( ap, bp, cp, m, n, k, rsa, csa, rsb, csb, rsc, csc);
 }// End of function
 
 void sgemm32(obj_t a, obj_t b, obj_t c)
 {
-  dim_t m  = bli_obj_length(c);
-  dim_t k  = bli_obj_width_after_trans(a);
-  dim_t n  = bli_obj_width(c);
-
-  dim_t lda = bli_obj_col_stride(a);
-  dim_t ldb = bli_obj_col_stride(b);
-  dim_t ldc = bli_obj_col_stride(c);
-
   float* ap = bli_obj_buffer(a);
   float* bp = bli_obj_buffer(b);
   float* cp = bli_obj_buffer(c);
-
-  inc_t rsa = a.rs;
-  inc_t csa = a.cs;
- 
-  inc_t rsb = b.rs;
-  inc_t csb = b.cs;
-
-  inc_t rsc = c.rs;
-  inc_t csc = c.cs;
-  
+    
   sgemm32_ukernel ( ap, bp, cp);
 }// End of function
 
@@ -96,6 +84,31 @@ void sgemm128(obj_t a, obj_t b, obj_t c)
   sgemm128_ukernel ( ap, bp, cp);
 }// End of function
 
+void sgemm4(obj_t a, obj_t b, obj_t c)
+{
+  dim_t m  = bli_obj_length(c);
+  dim_t k  = bli_obj_width_after_trans(a);
+  dim_t n  = bli_obj_width(c);
+
+  dim_t lda = bli_obj_col_stride(a);
+  dim_t ldb = bli_obj_col_stride(b);
+  dim_t ldc = bli_obj_col_stride(c);
+
+  float* ap = bli_obj_buffer(a);
+  float* bp = bli_obj_buffer(b);
+  float* cp = bli_obj_buffer(c);
+
+  inc_t rsa = a.rs;
+  inc_t csa = a.cs;
+ 
+  inc_t rsb = b.rs;
+  inc_t csb = b.cs;
+
+  inc_t rsc = c.rs;
+  inc_t csc = c.cs;
+  
+  sgemm4_ukernel ( ap, bp, cp);
+}// End of function
 
 
 
@@ -113,14 +126,37 @@ void sgemm_Ukernel_ref (
                     inc_t cs_c
 		   )
 {
-  for (int j = 0; j < n; j++)
+
+ if((m == 4) && (rs_c == 1) )
     {
+      // this is done because in BLIS, for when blis matrix objects are created with 4 x 4 dimesions
+      // the column_stride (column major) is getting doubled. Hence to handle this case we are doing this small fix
       for (int i = 0; i < m; i++)
 	{
-	  for(int p = 0; p < k; p++)
+	  for (int j = 0; j < n; j++)
 	    {
-	      c[i*rs_c + j*cs_c] += a[i*rs_a + p* cs_a] * b[p * rs_b + j * cs_b];
+	      float sum = 0.0;
+	      for(int p = 0; p < k; p++)
+		{
+		  sum += a[i*rs_a + p * k] * b[p*rs_b + j*n];
+		}
+	      c[i*rs_c + j*n] += sum;
 	    }
 	}
+      return;
     }
-}
+
+
+  for (int i = 0; i < m; i++)
+    {
+      for (int j = 0; j < n; j++)
+	{
+	  float sum = 0.0;
+	  for(int p = 0; p < k; p++)
+	    {
+	      sum += a[i*rs_a + p * cs_a] * b[p*rs_b + j*cs_b];	      
+	    }
+	  c[i*rs_c + j*cs_c] += sum;
+	}
+    }
+}// end of function

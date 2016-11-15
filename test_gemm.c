@@ -5,6 +5,10 @@
 
 #define  TESTING_
 
+#ifdef TESTING_
+FILE *fp = NULL;
+#endif
+
 int main(int argc, char*argv[])
 {
   obj_t a, b, c, c_save;
@@ -56,7 +60,9 @@ int main(int argc, char*argv[])
     gemmfptr = sgemm128;
   else if (m == 32)
     gemmfptr = sgemm32;
-  else
+  else if (m == 4)
+    gemmfptr = sgemm4;
+else
     gemmfptr = sgemm;
 
   bli_obj_create(dt, m, k, rs, cs, &a);
@@ -66,28 +72,55 @@ int main(int argc, char*argv[])
 
   bli_randm(&a);
   bli_randm(&b);
+#ifndef TESTING_
   bli_randm(&c);
   bli_copym(&c, &c_save);
+#endif
   dtime_save = 1.0e9;
 
 #ifdef TESTING_
   float* apin = bli_obj_buffer(a);
   float* bpin = bli_obj_buffer(b);
   float* csp    = bli_obj_buffer(c_save);
+
   for (int i = 0; i < m*k; i++)
     {
-      apin[i] = (float)(1 << (i%3));
+      apin[i] = 2.0; //(float)(1 << (i%3));
     }
 
   for (int i = 0; i < k*n; i++)
     {
-      bpin[i] = (float)(1 << (i%5));
+      bpin[i] = 2.0; //(float)(1 << (i%5));
     }
 
   for (int i = 0; i < m*n; i++)
     {
-      csp[i] = 2.0;
+      csp[i] = 0.0;
     }
+   bli_copym(&c_save, &c);
+
+  fp = fopen("ref.txt","wt");
+  if (fp == NULL) 
+    {
+      printf("Error opening the file\n");
+      exit(1);
+    }
+  fprintf(fp, "Matrix A\n");
+ for (int i = 0; i < m; i++)
+   {
+    for(int j= 0; j < k; j++)
+      fprintf(fp,"%3.3f ", apin[i*rs + j*cs]);
+    fprintf(fp,"\n");
+   }
+    
+  fprintf(fp, "\nMatrix B\n");
+ for (int i = 0; i < k; i++)
+   {
+    for(int j= 0; j < n; j++)
+      fprintf(fp,"%3.3f ", bpin[i*rs + j*cs]);
+    fprintf(fp,"\n");
+   }
+
 #endif
   
   for (int r = 0; r < n_repeats; ++r)
@@ -119,10 +152,28 @@ int main(int argc, char*argv[])
   float err = 0.0;
   for (int i = 0; i < m*n; i++)
     {
-      err = cp[i] - cr[i];
-      printf("Error @ [%d] = %6.3f\n", i, err);
+      // err = cp[i] - cr[i];
+      //      printf("Error @ [%d] = %6.3f\n", i, err);
     }
 
+ fprintf(fp, "\nMatrix Cref\n"); 
+ for (int i = 0; i < m; i++)
+   {
+    for(int j= 0; j < n; j++)
+      fprintf(fp,"%3.3f ", cr[i*rs + j*cs]);
+    fprintf(fp,"\n");
+   }
+ 
+
+ fprintf(fp, "\nMatrix C\n"); 
+ for (int i = 0; i < m; i++)
+   {
+    for(int j= 0; j < n; j++)
+      fprintf(fp,"%3.3f ", cp[i*rs + j*cs]);
+    fprintf(fp,"\n");
+   }
+ 
+ fclose(fp);
   bli_obj_free(&cref);
 #endif
 
@@ -134,6 +185,4 @@ int main(int argc, char*argv[])
   bli_finalize();
 
   return 0;
-
-
-}
+}//end main
